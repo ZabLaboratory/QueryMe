@@ -1,0 +1,45 @@
+[project]
+name = "queryme"
+version = "0.1.0"
+description = "Shared query toolkit for the Zablab platform — descriptor schema, validator, compiler. Consumed by every DB-bearing microservice."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.10.0",
+    "sqlalchemy>=2.0.36",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "pre-commit>=4.0.0",
+    "pip-audit>=2.7.0",
+    "detect-secrets>=1.5.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/queryme"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["I", "E", "W", "F", "UP", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
