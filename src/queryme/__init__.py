@@ -16,7 +16,7 @@ See ADR 001 in ``D:/Document/ZabLaboratory/docs/adr/001-blueprint-db-access.md``
 for the canonical form locked in v0.1.0.
 """
 
-from queryme.compiler import compile_query
+from queryme.compiler import CompilationError, compile_query
 from queryme.descriptor import (
     JoinClause,
     Operator,
@@ -36,6 +36,7 @@ from queryme.validator import ValidationIssue, validate_against_schema
 
 __all__ = [
     "ColumnDef",
+    "CompilationError",
     "JoinClause",
     "Operator",
     "OrderClause",
@@ -51,4 +52,4 @@ __all__ = [
     "validate_against_schema",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
