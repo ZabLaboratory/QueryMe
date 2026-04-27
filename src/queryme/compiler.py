@@ -12,6 +12,7 @@ the structured issues — never a half-built statement.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, cast
 
 from sqlalchemy import (
@@ -68,14 +69,23 @@ class CompilationError(Exception):
 # Type mapping (closed set per schema.ColumnType)
 # ---------------------------------------------------------------------------
 
-
-_TYPE_MAP: dict[ColumnType, type[TypeEngine[Any]]] = {
+# Factories rather than raw classes so we can pass constructor flags
+# where needed. ``Uuid(as_uuid=False)`` makes the synthetic column
+# accept and emit string UUIDs, which is what JSON callers send and
+# what HTTP responses serialise to anyway — saves every service from
+# coercing both sides. Result rows for the underlying real PG column
+# (declared as ``Uuid(as_uuid=True)`` in the service's models) flow
+# through the same way because the synthetic column type only
+# influences bind/result processing on the synthetic ``Table``, not
+# the actual DB-side column.
+_TypeFactory = Callable[[], TypeEngine[Any]]
+_TYPE_FACTORIES: dict[ColumnType, _TypeFactory] = {
     "string": String,
     "text": Text,
     "integer": Integer,
     "float": Float,
     "boolean": Boolean,
-    "uuid": Uuid,
+    "uuid": lambda: Uuid(as_uuid=False),
     "datetime": DateTime,
     "date": Date,
     "json": JSON,
@@ -181,7 +191,7 @@ def _build_table(metadata: MetaData, table_def: TableDef) -> Table:
     because joins are explicit in the descriptor."""
     cols: list[Column[Any]] = []
     for c in table_def.columns:
-        sa_type = _TYPE_MAP[c.type]()
+        sa_type = _TYPE_FACTORIES[c.type]()
         cols.append(
             Column(c.name, sa_type, nullable=c.nullable, primary_key=c.primary)
         )
