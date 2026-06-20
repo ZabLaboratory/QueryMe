@@ -16,7 +16,7 @@ permissions:
 jobs:
   lint:
     name: Lint (ruff)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
 
   typecheck:
     name: Typecheck (mypy)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
 
   test:
     name: Test (pytest)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
 
   deps-audit:
     name: Dependency audit (pip-audit)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
 
   secret-scan:
     name: Secret scan (trufflehog)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +104,7 @@ jobs:
 
   lockfile-check:
     name: Lockfile check (uv lock --check)
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
 
   codeowners-check:
     name: CODEOWNERS present
-    runs-on: [self-hosted, vps-ovh]
+    runs-on: [self-hosted, vps-ovh, zab-queryme]
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v4
