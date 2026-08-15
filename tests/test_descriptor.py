@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from queryme.descriptor import (
+    MAX_LIMIT,
     JoinClause,
     OrderClause,
     QueryDescriptor,
@@ -17,13 +18,14 @@ def test_query_descriptor_minimal_round_trip() -> None:
     payload = {
         "table": "match_players",
         "select": ["champion", "role", "side"],
+        "limit": 50,
     }
     descriptor = QueryDescriptor.model_validate(payload)
-    # Default lists are empty, optional ints stay None.
+    # Default lists are empty, offset stays optional.
     assert descriptor.where == []
     assert descriptor.joins == []
     assert descriptor.order == []
-    assert descriptor.limit is None
+    assert descriptor.limit == 50
     assert descriptor.offset is None
     # Round-trip keeps the explicit fields intact.
     redumped = descriptor.model_dump()
@@ -84,6 +86,7 @@ def test_query_descriptor_rejects_duplicate_join() -> None:
                 JoinClause(table="players", on=("player_id", "id")),
             ],
             select=["champion"],
+            limit=50,
         )
 
 
@@ -92,10 +95,25 @@ def test_query_descriptor_rejects_unknown_field() -> None:
     immediately rather than being silently discarded."""
     with pytest.raises(ValidationError):
         QueryDescriptor.model_validate(
-            {"table": "matches", "select": ["id"], "groupby": ["side"]}
+            {"table": "matches", "select": ["id"], "limit": 50, "groupby": ["side"]}
         )
+
+
+def test_limit_is_required() -> None:
+    with pytest.raises(ValidationError):
+        QueryDescriptor(table="matches", select=["id"])
 
 
 def test_negative_limit_rejected() -> None:
     with pytest.raises(ValidationError):
         QueryDescriptor(table="matches", select=["id"], limit=-1)
+
+
+def test_limit_above_max_rejected() -> None:
+    with pytest.raises(ValidationError):
+        QueryDescriptor(table="matches", select=["id"], limit=MAX_LIMIT + 1)
+
+
+def test_limit_at_max_accepted() -> None:
+    descriptor = QueryDescriptor(table="matches", select=["id"], limit=MAX_LIMIT)
+    assert descriptor.limit == MAX_LIMIT

@@ -31,6 +31,7 @@ IssueCode = Literal[
     "unknown_select_column",
     "duplicate_join",
     "empty_select",
+    "limit_out_of_bounds",
 ]
 
 
