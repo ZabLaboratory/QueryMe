@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 
 from queryme.compiler import CompilationError, compile_query
 from queryme.descriptor import (
-    DEFAULT_MAX_LIMIT,
+    MAX_LIMIT,
     JoinClause,
     OrderClause,
     QueryDescriptor,
@@ -87,6 +87,7 @@ def test_compile_simple_select() -> None:
     descriptor = QueryDescriptor(
         table="matches",
         select=["id", "blue_team", "red_team"],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "SELECT matches.id, matches.blue_team, matches.red_team" in sql
@@ -94,7 +95,7 @@ def test_compile_simple_select() -> None:
     assert "WHERE" not in sql
     assert "JOIN" not in sql
     assert "ORDER BY" not in sql
-    assert "LIMIT" in sql
+    assert "LIMIT 50" in sql
 
 
 def test_compile_where_equality_with_value() -> None:
@@ -103,6 +104,7 @@ def test_compile_where_equality_with_value() -> None:
         table="matches",
         select=["id"],
         where=[WhereClause(column="patch", op="=", value="14.7")],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "WHERE matches.patch = '14.7'" in sql
@@ -125,6 +127,7 @@ def test_compile_comparison_operators(op: str, value: object, needle: str) -> No
         table="matches",
         select=["id"],
         where=[WhereClause(column=column, op=op, value=value)],  # type: ignore[arg-type]
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert needle in sql
@@ -136,6 +139,7 @@ def test_compile_in_operator() -> None:
         table="match_players",
         select=["champion"],
         where=[WhereClause(column="role", op="IN", value=["mid", "top"])],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "match_players.role IN ('mid', 'top')" in sql
@@ -147,6 +151,7 @@ def test_compile_like_operator() -> None:
         table="players",
         select=["summoner_name"],
         where=[WhereClause(column="summoner_name", op="LIKE", value="A%")],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     # PG dialect doubles the % in literal_binds output (param-marker
@@ -160,6 +165,7 @@ def test_compile_is_null_operator() -> None:
         table="matches",
         select=["id"],
         where=[WhereClause(column="patch", op="IS NULL")],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "matches.patch IS NULL" in sql
@@ -174,6 +180,7 @@ def test_compile_multiple_where_are_and_joined() -> None:
             WhereClause(column="role", op="=", value="mid"),
             WhereClause(column="side", op="=", value="blue"),
         ],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert " AND " in sql
@@ -194,6 +201,7 @@ def test_compile_inner_join() -> None:
         ],
         select=["champion", "role"],
         where=[WhereClause(column="match_id", op="=", value="abc")],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "JOIN players ON match_players.player_id = players.id" in sql
@@ -226,6 +234,7 @@ def test_compile_chained_joins_resolve_against_previously_joined() -> None:
             ),
         ],
         select=["blue_team"],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "JOIN match_players ON matches.id = match_players.match_id" in sql
@@ -241,6 +250,7 @@ def test_compile_qualified_where_column() -> None:
         where=[
             WhereClause(column="players.summoner_name", op="LIKE", value="Faker%"),
         ],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "players.summoner_name LIKE 'Faker%%'" in sql
@@ -255,6 +265,7 @@ def test_compile_order_by_multiple() -> None:
             OrderClause(column="side"),
             OrderClause(column="role", direction="desc"),
         ],
+        limit=50,
     )
     sql = _sql(compile_query(descriptor, schema))
     assert "ORDER BY match_players.side ASC, match_players.role DESC" in sql
@@ -273,14 +284,6 @@ def test_compile_limit_and_offset() -> None:
     assert "OFFSET 20" in sql
 
 
-def test_compile_applies_default_max_limit_when_unset() -> None:
-    schema = _truth_schema()
-    descriptor = QueryDescriptor(table="matches", select=["id"])
-    sql = _sql(compile_query(descriptor, schema))
-    assert f"LIMIT {DEFAULT_MAX_LIMIT}" in sql
-    assert "OFFSET" not in sql
-
-
 # ── Failure path ───────────────────────────────────────────────────────────
 
 
@@ -289,6 +292,7 @@ def test_compile_raises_compilation_error_on_validation_failure() -> None:
     descriptor = QueryDescriptor(
         table="match_players",
         select=["ghost_field"],
+        limit=50,
     )
     with pytest.raises(CompilationError) as exc_info:
         compile_query(descriptor, schema)
@@ -300,10 +304,24 @@ def test_compile_raises_compilation_error_on_validation_failure() -> None:
 
 def test_compile_raises_with_unknown_table() -> None:
     schema = _truth_schema()
-    descriptor = QueryDescriptor(table="ghosts", select=["id"])
+    descriptor = QueryDescriptor(table="ghosts", select=["id"], limit=50)
     with pytest.raises(CompilationError) as exc_info:
         compile_query(descriptor, schema)
     assert exc_info.value.issues[0].code == "unknown_table"
+
+
+def test_compile_rejects_limit_out_of_bounds_bypassing_field_validation() -> None:
+    """``model_construct`` skips field validators — the compiler is the
+    last gate before a query reaches SQL, so it must re-check the bound
+    even on a descriptor built this way."""
+    schema = _truth_schema()
+    descriptor = QueryDescriptor.model_construct(
+        table="matches", select=["id"], where=[], joins=[], order=[],
+        limit=MAX_LIMIT + 1, offset=None,
+    )
+    with pytest.raises(CompilationError) as exc_info:
+        compile_query(descriptor, schema)
+    assert exc_info.value.issues[0].code == "limit_out_of_bounds"
 
 
 def test_compile_returned_select_is_executable_shape() -> None:
@@ -320,6 +338,7 @@ def test_compile_returned_select_is_executable_shape() -> None:
             )
         ],
         select=["champion", "role", "side"],
+        limit=50,
     )
     stmt = compile_query(descriptor, schema)
     names = [c.name for c in stmt.selected_columns]

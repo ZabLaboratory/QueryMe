@@ -9,3 +9,10 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Agent protocol staging files (AGENT_START/CHECKPOINT/REPORT drafts) —
+# never meant to enter the repo, may carry pre-disclosure detail.
+.checkpoint-comment.md
+.report.md
+.pr-body*.md
+

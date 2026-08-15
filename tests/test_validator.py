@@ -59,6 +59,7 @@ def test_valid_query_returns_no_issues() -> None:
             )
         ],
         select=["champion", "role", "side"],
+        limit=50,
     )
     assert validate_against_schema(descriptor, schema) == []
 
@@ -70,6 +71,7 @@ def test_qualified_column_resolves() -> None:
         joins=[JoinClause(table="players", on=("player_id", "id"))],
         where=[WhereClause(column="players.summoner_name", op="LIKE", value="A%")],
         select=["champion"],
+        limit=50,
     )
     assert validate_against_schema(descriptor, schema) == []
 
@@ -79,7 +81,7 @@ def test_qualified_column_resolves() -> None:
 
 def test_unknown_table_short_circuits() -> None:
     schema = _truth_schema()
-    descriptor = QueryDescriptor(table="nonexistent", select=["id"])
+    descriptor = QueryDescriptor(table="nonexistent", select=["id"], limit=50)
     issues = validate_against_schema(descriptor, schema)
     assert len(issues) == 1
     assert issues[0].code == "unknown_table"
@@ -91,6 +93,7 @@ def test_unknown_select_column_reported() -> None:
     descriptor = QueryDescriptor(
         table="match_players",
         select=["champion", "ghost_field"],
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     codes = {(i.code, i.path) for i in issues}
@@ -99,7 +102,7 @@ def test_unknown_select_column_reported() -> None:
 
 def test_empty_select_reported() -> None:
     schema = _truth_schema()
-    descriptor = QueryDescriptor(table="match_players")
+    descriptor = QueryDescriptor(table="match_players", limit=50)
     issues = validate_against_schema(descriptor, schema)
     assert any(i.code == "empty_select" for i in issues)
 
@@ -114,6 +117,7 @@ def test_join_with_select_satisfies_empty_select_rule() -> None:
         joins=[
             JoinClause(table="players", on=("player_id", "id"), select=["summoner_name"]),
         ],
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     assert all(i.code != "empty_select" for i in issues)
@@ -125,6 +129,7 @@ def test_unknown_join_table_reported() -> None:
         table="match_players",
         joins=[JoinClause(table="ghosts", on=("player_id", "id"))],
         select=["champion"],
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     assert any(i.code == "unknown_join_table" and i.path == "joins[0].table" for i in issues)
@@ -136,6 +141,7 @@ def test_unknown_join_column_reported() -> None:
         table="match_players",
         joins=[JoinClause(table="players", on=("nope", "wrong"))],
         select=["champion"],
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     paths = {i.path for i in issues}
@@ -149,6 +155,7 @@ def test_unknown_where_column_reported() -> None:
         table="match_players",
         where=[WhereClause(column="missing", op="=", value=1)],
         select=["champion"],
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     assert any(i.code == "unknown_column" and i.path == "where[0].column" for i in issues)
@@ -160,6 +167,7 @@ def test_unknown_order_column_reported() -> None:
         table="match_players",
         select=["champion"],
         order=[{"column": "ghost"}],  # type: ignore[list-item]
+        limit=50,
     )
     issues = validate_against_schema(descriptor, schema)
     assert any(i.code == "unknown_order_column" for i in issues)

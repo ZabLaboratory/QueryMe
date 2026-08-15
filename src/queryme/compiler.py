@@ -37,7 +37,7 @@ from sqlalchemy import (
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.types import TypeEngine
 
-from queryme.descriptor import DEFAULT_MAX_LIMIT, Operator, QueryDescriptor
+from queryme.descriptor import MAX_LIMIT, Operator, QueryDescriptor
 from queryme.schema import ColumnType, SchemaDescriptor, TableDef
 from queryme.validator import ValidationIssue, validate_against_schema
 
@@ -169,13 +169,20 @@ def compile_query(
         col = _resolve_column(o.column, tables)
         stmt = stmt.order_by(asc(col) if o.direction == "asc" else desc(col))
 
-    # LIMIT — always emitted. An explicit descriptor.limit is already
-    # bounded by DEFAULT_MAX_LIMIT (descriptor validation) ; an omitted
-    # one falls back to the same ceiling so a query can never run
-    # unbounded against a service's database.
-    stmt = stmt.limit(
-        descriptor.limit if descriptor.limit is not None else DEFAULT_MAX_LIMIT
-    )
+    # LIMIT — required on the descriptor and re-checked here : the
+    # field validator is skipped by pydantic's ``model_construct()``,
+    # so this is the last gate before a query ever reaches SQL.
+    if not 0 <= descriptor.limit <= MAX_LIMIT:
+        raise CompilationError(
+            [
+                ValidationIssue(
+                    code="limit_out_of_bounds",
+                    message=f"limit {descriptor.limit} is outside [0, {MAX_LIMIT}]",
+                    path="limit",
+                )
+            ]
+        )
+    stmt = stmt.limit(descriptor.limit)
     if descriptor.offset is not None:
         stmt = stmt.offset(descriptor.offset)
 

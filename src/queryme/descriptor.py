@@ -18,12 +18,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-#: Hard ceiling on rows a single query can return. Applied both as the
-#: upper bound on an explicit ``limit`` (rejected past this, not
-#: clamped — a descriptor that asks for more than the ceiling is wrong,
-#: not merely generous) and as the value the compiler substitutes when
-#: ``limit`` is omitted, so ``None`` can never mean "no LIMIT clause".
-DEFAULT_MAX_LIMIT = 1000
+#: Hard ceiling on rows a single query can return. ``limit`` is a
+#: required field bounded by this constant — there is no silent
+#: fallback. A caller that can't state a bound gets a rejected
+#: descriptor, not a truncated result: per ADR 001 §3.3, a result
+#: silently cut short is more dangerous than a refusal, because it
+#: reads as complete (e.g. a grants/revocation enumeration truncated
+#: at the ceiling looks like "this right doesn't exist").
+MAX_LIMIT = 1000
 
 # ---------------------------------------------------------------------------
 # Operators
@@ -166,8 +168,9 @@ class QueryDescriptor(BaseModel):
     # ORDER BY (stacked)
     order: list[OrderClause] = Field(default_factory=list)
 
-    # LIMIT / OFFSET. ``None`` limit = compiler applies DEFAULT_MAX_LIMIT.
-    limit: int | None = Field(default=None, ge=0, le=DEFAULT_MAX_LIMIT)
+    # LIMIT / OFFSET. ``limit`` is required — every caller must state
+    # its own bound, capped at MAX_LIMIT.
+    limit: int = Field(ge=0, le=MAX_LIMIT)
     offset: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
