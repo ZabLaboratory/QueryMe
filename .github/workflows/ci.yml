@@ -17,11 +17,12 @@ jobs:
   lint:
     name: Lint (ruff)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.11"
           enable-cache: true
@@ -33,11 +34,12 @@ jobs:
   typecheck:
     name: Typecheck (mypy)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.11"
           enable-cache: true
@@ -49,11 +51,12 @@ jobs:
   test:
     name: Test (pytest)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.11"
           enable-cache: true
@@ -65,11 +68,12 @@ jobs:
   deps-audit:
     name: Dependency audit (pip-audit)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.11"
           enable-cache: true
@@ -81,9 +85,10 @@ jobs:
   secret-scan:
     name: Secret scan (trufflehog)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Full history so the native trufflehog git scan covers the whole
           # repository, not just the tip commit.
@@ -92,8 +97,10 @@ jobs:
         # The trufflesecurity/trufflehog@main action runs via `docker run`,
         # which exits 125 on the JIT self-hosted runner (no Docker daemon).
         # Use the native binary instead — pinned, installed in-job, no docker.sock.
+        # install.sh pinned to the commit tagged v3.90.10 (same version as the
+        # binary below) instead of the mutable `main` branch.
         run: |
-          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/bc2cd3e45e3aa4a6c627bd0c424580f86dde1855/scripts/install.sh \
             | sh -s -- -b "$RUNNER_TEMP/bin" v3.90.10
           "$RUNNER_TEMP/bin/trufflehog" --version
       - name: TruffleHog scan
@@ -105,11 +112,12 @@ jobs:
   lockfile-check:
     name: Lockfile check (uv lock --check)
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.11"
       - name: Verify uv.lock is consistent with pyproject.toml
@@ -118,9 +126,10 @@ jobs:
   codeowners-check:
     name: CODEOWNERS present
     runs-on: [self-hosted, vps-ovh, zab-queryme]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Check CODEOWNERS exists
         run: |
           if [ ! -f .github/CODEOWNERS ] && [ ! -f CODEOWNERS ] && [ ! -f docs/CODEOWNERS ]; then
