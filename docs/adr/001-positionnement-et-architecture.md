@@ -1125,3 +1125,729 @@ Chaque critère porte un moyen de vérification. Un critère sans vérification 
   sur l'usage effectif du tag `v0.2.2` ; (c) la documentation publique n'énonce la revendication
   du §3.2 que pour les datastores établis par (a) et (b). Un datastore encore atteint par les deux
   voies est explicitement listé comme non couvert (§3.2 (b), P5).
+
+## Amendment 1 — Ancre de confiance, révocation par durée de vie, et correction de la partition des régimes
+
+- **Status**: accepted
+- **Date**: 2026-08-15
+- **Decided**: 2026-08-15
+- **Deciders**: @ClodoCapeo
+- **Author**: Atlas
+
+> Bastion a instruit les surfaces §3.10(1) — signature et révocation — et §3.10(4) — solidité du
+> jeu d'invariants et de la partition ternaire — et rendu un **veto sur les deux**
+> (`ZabLaboratory/QueryMe#6`, thread `bastion-adr-001-invariants`, ADR lu @ `17e78871d`). Les
+> deux vetos sont étroits : aucun ne demande de refonte d'architecture. Ce qui est bloqué, ce sont
+> des affirmations aujourd'hui fausses ou indécidées dans un document dont RC-24 impose la
+> reproduction publique verbatim, plus deux points de schéma et de format qui déterminent du code
+> P0 et doivent donc atterrir avant lui.
+>
+> Le présent amendement porte les huit décisions de §3.10(1) (A1–A8) et les neuf points de
+> §3.10(4) (B1–B9). Il **corrige** B5 et **atténue** B9 plutôt que d'en accepter le risque : pour
+> B5 parce que RC-19 est l'unique atténuation de R11 et qu'une atténuation contournable par
+> découpage de document n'en est pas une ; pour B9 sur décision explicite du porteur — patch
+> `v0.2.3`, pas acceptation de risque. La distinction entre *corriger* et *atténuer* est
+> normative : le patch borne l'appel unitaire, il ne borne pas l'extraction cumulée, dont la
+> fermeture s'obtient par le **passage sur une surface attestée où I9 s'applique** — ce qui
+> suppose la sortie de la ligne `0.x`, consommateur par consommateur : P2 pour Blue, P5 pour les
+> cinq autres, I9 (P1) n'en étant que la précondition (R20).
+>
+> Il ne modifie ni le positionnement du §3.1, ni le choix de construction du §3.8, ni l'ordre des
+> phases du §3.9. Les révisions antérieures ne sont pas réécrites.
+
+### A1. Contexte
+
+L'ADR 001 déférait explicitement la signature à §3.10(1) — RC-3 : « Le déterminisme de la
+*signature* n'est pas présumé et relève de §3.10(1) ». L'instruction est rendue ; ses décisions
+appartiennent désormais au texte normatif et non au rapport qui les porte.
+
+Deux constats de l'instruction dépassent le périmètre attendu et motivent la moitié des
+modifications ci-dessous :
+
+1. **En aval de l'ancre de confiance, toute la revendication « non exprimable par construction »
+   se réduit à une propriété unique : la clé de l'évaluateur n'a pas été détournée.** Le
+   répartiteur ne voit jamais le manifeste (RC-7) ; il n'a donc aucun point de comparaison
+   indépendant. C'est une conception légitime, mais elle n'était nommée nulle part, dans un
+   document que RC-24 rend public mot pour mot.
+2. **Le régime structurel dépend de deux vérifications à l'exécution** — celle du justificatif
+   (I2) et celle de l'attestation — alors que sa définition affirmait ne dépendre d'aucun
+   composant à l'exécution. La distinction visée était juste ; sa formulation était fausse.
+
+### A2. Modifications littérales du texte normatif
+
+Chaque item donne l'ancre dans la révision `17e78871d` et le texte de remplacement. Vigil
+applique ; aucun texte n'est reformulé au-delà de ce qui est écrit ici.
+
+> **Ordre d'application** : appliquer les items par **numéro de ligne décroissant**, afin qu'aucune
+> insertion ne décale l'ancre d'un item non encore appliqué. La numérotation M1…M28 est un
+> identifiant, pas un ordre d'exécution.
+
+#### M1 — §3.2, bullet « Régime structurel » (l.154-156)
+
+**Remplacer par :**
+
+> - **Régime structurel** (I2, I4, I5, I6 — et I1 sous la réserve ci-dessous) — ce qui viole est
+>   **non exprimable** : absent de la surface exécutable, sans voie de sortie ni dérogation. La
+>   garantie ne dépend d'**aucune décision de politique** à l'exécution. Elle dépend en revanche de
+>   deux propriétés du répartiteur, nommées ici et non présumées : la **vérification du
+>   justificatif** dont dérive l'identité effective (I2), et la **vérification de l'attestation**
+>   contre l'ancre de confiance du profil (§3.10(1)). Un défaut de l'une ou de l'autre défait le
+>   régime en amont de toute question d'expressivité.
+
+#### M2 — §3.2, bullet « Régime budgétaire » (l.157-160)
+
+**Remplacer** « aucune opération non bornée ne s'exécute sans décision tracée, attribuable et
+révocable » **par** « aucune opération non bornée ne s'exécute sans décision tracée, attribuable
+et **à durée de vie bornée** ». *(A5 — voir M15.)*
+
+#### M3 — §3.2, bullet « Régime de débit » (l.161-166)
+
+**Remplacer l'en-tête** « **Régime de débit** (I9) » **par** « **Régime appliqué** (I8, I9) », et
+**ajouter** en fin de bullet :
+
+> I8 y figure parce que l'auditabilité est **réalisée par le répartiteur** (§3.8) et non par
+> l'inexpressivité : elle repose sur la disponibilité du puits d'attribution, au même titre que I9
+> repose sur celle du comptage. La ranger parmi les impossibilités serait de la survente au sens
+> exact de R2.
+
+#### M4 — §3.2, après la liste des trois régimes (insertion après l.169)
+
+**Insérer :**
+
+> **Étiquetage.** Un invariant porte donc un **couple** — régime de l'*obligation de déclarer*,
+> toujours structurel, et régime du *dépassement*, qui seul varie. Les étiquettes ci-dessous
+> nomment le second ; le premier est invariablement structurel et ne se déclare pas invariant par
+> invariant.
+
+#### M5 — §3.2, revendication en trois temps (l.171-176)
+
+**Ajouter** en fin de paragraphe :
+
+> Aucun des trois temps ne porte l'auditabilité : elle relève du **régime appliqué**, au même titre
+> que le débit, et ne peut donc être annoncée comme une impossibilité.
+
+#### M6 — §3.2, invariant I1 (l.178-181)
+
+**Ajouter** à la fin du bullet :
+
+> Le long de tout chemin de jointure d'une opération, les prédicats de cloisonnement doivent être
+> prouvablement dérivés de **la même revendication** du justificatif vérifié. Un manifeste joignant
+> deux relations cloisonnées sur des discriminants dont l'identité n'est pas établie est **rejeté**,
+> à moins qu'une **relation de dérivation** entre les deux discriminants soit déclarée et
+> elle-même cloisonnée.
+
+*(B4. L'atteignabilité prouve que chaque relation porte un prédicat sur un discriminant déclaré,
+non que ce soit le même : deux relations jointes, l'une cloisonnée sur `tenant_id`, l'autre sur
+`org_id`, satisfont I1 mécaniquement pendant que la jointure franchit la frontière. Toute
+hiérarchie multi-tenant réelle produit ce cas sans malveillance. C'est un renforcement
+d'invariant : il change le schéma du manifeste, donc il est P0.)*
+
+#### M7 — §3.2, invariant I8 (l.212-215)
+
+**Remplacer l'étiquette** *(structurel)* **par** *(appliqué)*, et **ajouter** :
+
+> L'indisponibilité du puits d'attribution entraîne le **refus** des opérations, même posture
+> fail-closed que le comptage du §3.4 : une opération servie sans être attribuable défait I8 dans
+> le silence, et c'est précisément le chemin qu'emprunte l'identité légitime compromise du driver
+> 10 — bornée en volume par I9, mais sans trace.
+>
+> Ce fail-closed n'a de sens qu'assorti de la même atténuation que celui du comptage : **par
+> défaut, le puits d'attribution réside dans PostgreSQL**, écrit dans la transaction qui porte
+> l'appel, aux côtés des données et des compteurs. Il n'ajoute alors ni frontière de confiance ni
+> dépendance de disponibilité — il ne devient indisponible que lorsque la base l'est déjà. Un puits
+> externe reste possible et n'est admissible que si le profil le déclare, sous clearance
+> §3.10(10) ; il réintroduit alors intégralement le risque de déni de service par dégradation d'un
+> composant tiers (R21).
+
+#### M8 — §3.2, invariant I3, nuance sur la permissivité (l.194-198)
+
+**Remplacer** « Un profil déclare une proportion maximale d'opérations budgétées par manifeste
+(§3.3, §3.5) ; un manifeste qui la dépasse est refusé **en tant que manifeste**. » **par :**
+
+> Un profil déclare un plafond d'opérations budgétées **en proportion et en valeur absolue**,
+> évalué **par datastore** et non par document — le dénominateur excluant les opérations sans
+> paramètre porteur de coût. Un ensemble de manifestes desservant le même datastore qui dépasse ce
+> plafond est refusé **en tant qu'ensemble**. Le manifeste désigne à cette fin le datastore qu'il
+> dessert par un identifiant appartenant à un **ensemble clos déclaré au profil** ; un manifeste
+> désignant un identifiant hors de cet ensemble ne compile pas. L'auto-déclaration libre serait
+> vaine : deux manifestes inventant chacun leur identifiant échapperaient au plafond d'ensemble et
+> rouvriraient exactement l'évasion que ce plafond ferme.
+
+*(B5. Un plafond exprimé en proportion d'un document isolé se contourne de deux façons triviales :
+scinder la surface en deux manifestes, ou diluer le dénominateur avec des opérations bornées de
+remplissage. R11 n'avait que RC-19 pour atténuation ; une atténuation contournable par découpage
+n'en est pas une. La granularité retenue est le **datastore** — celle-là même dont §3.2 (b) et
+RC-41 font l'unité de la revendication — et non le « déploiement », notion qu'aucun gate de
+publication ne connaît et dont un critère la mentionnant serait inimplémentable.)*
+
+#### M9 — §3.2, clause de périmètre, point (a) (l.254-255)
+
+**Remplacer par :**
+
+> (a) les défauts d'implémentation de l'adaptateur, du moteur, **ou du répartiteur de référence
+> lui-même** — la garantie porte sur la **conception** de la surface attestée, jamais sur l'absence
+> de défaut dans le code qui la sert ;
+
+#### M10 — §3.2, clause de périmètre, point (d) (l.264-266)
+
+**Ajouter** en fin de point (d) :
+
+> …ainsi que l'**oracle obtenu par répétition d'une opération exposée à faible coût unitaire** :
+> une projection minuscule — un identifiant, un booléen, un compte — porte un coût majorant
+> minuscule, et le comptage en coût cumulé y autorise un nombre d'appels considérable. L'énumération
+> par oracle est bornée en **volume** par I9, elle ne l'est pas en **nombre** sans la déclaration
+> optionnelle du §3.4.
+
+#### M11 — §3.2, clause de périmètre, nouveau point (i) (insertion après (h), l.278)
+
+**Insérer avant la phrase de clôture** « QueryMe garantit qu'une surface dont l'accès lui est
+exclusif… » :
+
+> (i) le **compromis de la clé de signature de l'évaluateur**. Le répartiteur ne vérifie qu'une
+> signature et une correspondance de hachage, et ne voit jamais le manifeste (RC-7) : en aval de
+> l'ancre de confiance, la garantie se réduit à cette clé. Son détournement est un contournement
+> **total et silencieux** — le journal de RC-15 reconstruit fidèlement le tuple d'une attestation
+> forgée, et l'audit croisé de RC-20 est un outil hors ligne opéré par un humain. Aucun chemin de
+> détection automatique n'existe et aucun n'est promis.
+
+#### M12 — §3.3, propriété normative 2 (l.329-331)
+
+**Remplacer** « ce qui rend les limites de débit inviolables plutôt qu'approximativement tenues
+(RC-38) » **par :**
+
+> ce qui rend les limites de débit **non contournables par construction du comptage, sous les trois
+> conditions d'application RC-32, RC-33 et RC-36** — conservatisme de la fenêtre, joignabilité de
+> l'état, atomicité inter-répliques — plutôt qu'approximativement tenues (RC-38).
+
+#### M13 — §3.3, section « Émission », proportion maximale (l.349-351)
+
+**Remplacer par :**
+
+> Le profil déclare en outre un **plafond d'opérations budgétées, en proportion et en valeur
+> absolue, par datastore**. Le gate de publication refuse l'ensemble des manifestes desservant un
+> datastore lorsque leur union dépasse ce plafond : le refus porte sur la conception de la surface,
+> non sur une opération, et il n'est pas défait par le découpage du document (RC-19, R11).
+
+#### M14 — §3.3, insertion immédiatement après le paragraphe issu de M13, en fin de la section « Émission », **avant le paragraphe « Exécution. »** (l.353)
+
+**Insérer :**
+
+> **Schéma de signature.** Les trois familles d'artefacts sont signées par un schéma
+> **déterministe** — Ed25519 (RFC 8032) ou ECDSA déterministe (RFC 6979). Le motif est de sécurité
+> et non d'esthétique : la récupération de clé par nonce ECDSA rejoué est la classe de défaillance
+> la plus catastrophique et la plus silencieuse du domaine. La charge utile signée suit un
+> **encodage canonique spécifié avec vecteurs de test** : deux encodeurs divergents pour le même
+> tuple ouvriraient une surface de substitution au point exact de la décision de confiance.
+>
+> **Séparation de domaine.** Chaque famille — attestation, autorisation, allocation — porte une
+> **étiquette de domaine distincte incluse dans les octets signés**, vérifiée avant tout autre
+> champ. Les trois partagent le hachage de manifeste, le profil, l'émetteur et l'expiration : sans
+> séparation de domaine, une allocation est vérifiable comme une autorisation, classe d'attaque
+> standard sur les enveloppes signées à champs partagés.
+>
+> **Politique de signature.** Le nombre et les rôles des signataires exigés sont portés par
+> **l'ancre de confiance du profil** et vérifiés par le répartiteur — non par le tuple attesté, qui
+> reste inchangé. Le schéma est celui de **signatures détachées multiples sur la même charge utile
+> canonique**, n-parmi-m déclaré au profil ; un contreseing sur signature créerait un ordre et une
+> dépendance sans contrepartie. Sans cela, la « seconde signature selon le palier » du §3.6
+> resterait une convention de publication qu'aucun runtime ne peut exiger.
+
+#### M15 — §3.2, artefacts signés, nouvelle sous-section (insertion après l.247)
+
+**Insérer :**
+
+> **Ancre de confiance.** L'autorité de vérification est un **ensemble de clés publiques
+> provisionné hors bande** — hors du chemin de livraison de l'artefact, hors de l'atteinte du
+> processus de publication, et porteur de la politique de signature du profil. Si la clé de
+> vérification voyageait avec le bundle, la signature serait décorative : le répartiteur ne voyant
+> jamais le manifeste (RC-7), il n'aurait **aucun autre point de comparaison** et un artefact
+> intégralement forgé passerait toutes les vérifications de RC-4.
+>
+> Les **hiérarchies de clés sont disjointes par profil**. Une clé `dev` est cryptographiquement
+> incapable de produire un artefact vérifiable par une ancre `prod` : l'inutilisabilité d'une
+> attestation `dev` en `prod` cesse d'être une comparaison de champ au démarrage pour devenir une
+> propriété de la vérification de signature, la comparaison subsistant en défense en profondeur.
+> Cette séparation n'est pas une précaution générale : la clé `dev` est par conception la plus
+> exposée du système — présente sur chaque poste d'auteur et émettant automatiquement à chaque
+> compilation (§3.3, §3.6) —, et une clé unique pour les deux profils rendrait fausse
+> l'affirmation « aucune fenêtre d'exposition » du §3.6.
+>
+> **Durée de vie et retrait.** Aucune liste de révocation n'est introduite : une liste est un état
+> que le répartiteur devrait consulter, donc une frontière de confiance et une dépendance de
+> disponibilité nouvelles — ce que RC-7 et le tripwire du §3.8 lui interdisent par ailleurs. Le
+> retrait d'un artefact s'opère donc par **durée de vie courte et non-renouvellement**. Le profil
+> déclare une durée de vie maximale par famille d'artefact ; le **délai de retrait effectif est
+> cette durée de vie**, et il est publié comme tel. Si une révocation immédiate devenait requise,
+> elle rouvrirait §3.10(1) et deviendrait un composant à attester, fail-closed au même titre que
+> les compteurs du §3.4 (R13).
+>
+> **Rotation.** La passe attestante unique (§3.8) interdisant de re-signer un artefact produit par
+> une exécution séparée, toute rotation de clé impose la **recompilation et la ré-attestation de
+> toute surface déployée** — opération que seul le déterminisme au bit de RC-29 rend sûre, et
+> qu'une rotation ratée transforme en panne totale par RC-30. En conséquence : durée de vie de clé
+> bornée et déclarée au profil, ancre constituée d'un **ensemble** de clés avec fenêtre de
+> recouvrement, et **runbook de rotation d'urgence écrit avant P1** (R19).
+
+#### M16 — §3.4, section « Clé » (l.375-380)
+
+**Remplacer** « Le compteur est clavé par `(identité, sous-clé, relation, axe, fenêtre)` » **par :**
+
+> Le compteur est clavé par `(identité, sous-clé, relation, axe, unité, fenêtre)`, où l'**unité**
+> vaut `coût` ou `appels`.
+
+**Et ajouter** en fin de section :
+
+> L'unité `coût` est le régime nominal et reste le seul obligatoire : compter des appels serait
+> défait par des appels plus gros. L'unité `appels` existe pour le cas symétrique, que le coût
+> cumulé ne borne pas — l'**oracle à faible coût unitaire** (§3.2 (d)) : une opération à projection
+> minuscule autorise un nombre d'appels considérable sous un quota de coût intact, ce qui est la
+> forme classique de l'énumération par enregistrement.
+
+#### M17 — §3.4, section « Déclaration » (l.412-414)
+
+**Ajouter** en fin de section :
+
+> Une relation **peut** déclarer, en sus de ses deux limites de coût cumulé, une limite en **nombre
+> d'appels** par identité et par fenêtre, sur l'un ou l'autre axe. Le profil **doit** pouvoir
+> l'exiger ; lorsqu'il l'exige, un manifeste qui l'omet ne compile pas.
+
+#### M18 — §3.4, section « Allocations » (l.472-474)
+
+**Remplacer** « expirante et révocable » **par** « **à durée de vie bornée, non renouvelée au-delà
+de la durée maximale déclarée au profil** ».
+
+#### M19 — §3.9, phase P0 (l.734-742)
+
+**Ajouter** à l'énumération des livrables de P0 :
+
+> …ancre de confiance et politique de signature du profil, séparation de domaine des trois
+> familles d'artefacts, encodage canonique de la charge utile signée avec ses vecteurs de test, et
+> la cohérence du discriminant de cloisonnement le long des chemins de jointure (I1).
+
+*(B4 change le schéma du manifeste et A7 change ce que le répartiteur doit pouvoir exiger. Les deux
+déterminent du code P0 et ne peuvent pas être rattrapés après QM-P0-03 et QM-P0-05.)*
+
+#### M20 — §4, régime de garantie non uniforme (l.855-857)
+
+**Remplacer** « six invariants structurels, deux budgétaires, un de débit — ce dernier **appliqué**
+et non impossible » **par :**
+
+> cinq invariants structurels, deux budgétaires, deux appliqués — l'auditabilité et le débit, tous
+> deux **appliqués** et non impossibles, et le régime structurel lui-même conditionné à deux
+> vérifications du répartiteur nommées au §3.2.
+
+#### M21 — §3.2, rappel des trois artefacts signés (l.245)
+
+**Remplacer** « portent sur des quadruplets (identité, sous-clé, relation, axe) » **par** « portent
+sur des **quintuplets** (identité, sous-clé, relation, axe, **unité**) ».
+
+*(Le §3.4 dérive le tuple d'allocation de la clé de compteur ; toute composante ajoutée à la clé
+doit se propager aux deux endroits, sous peine de rouvrir précisément l'accident que l'argument du
+§3.4 ferme.)*
+
+#### M22 — §3.4, section « Allocations », tuple et justification (l.464-470)
+
+**a.** **Remplacer** le tuple par :
+
+> `(hachage du manifeste, identité ou classe d'identité, sous-clé de partition ou joker, relation,
+> axe, unité, plafond de fenêtre, profil, émetteur, expiration)`
+
+**b.** Dans la justification qui suit (l.466-467), **remplacer** « Sous-clé **et** axe appartiennent
+au tuple parce que le compteur est clavé par `(identité, sous-clé, relation, axe, fenêtre)` »
+**par** « Sous-clé, axe **et unité** appartiennent au tuple parce que le compteur est clavé par
+`(identité, sous-clé, relation, axe, unité, fenêtre)` ».
+
+**c.** **Ajouter** à cette même justification, après l'argument sur l'axe :
+
+> …et sans l'**unité**, élargir le quota de coût d'un consommateur légitime élargirait du même
+> geste son nombre d'appels admissible, ce qui rouvrirait l'oracle à faible coût unitaire que la
+> déclaration du §3.4 ferme.
+
+*(Sans (b), l'amendement se contredirait à deux lignes d'écart : un énumérateur binaire pour trois
+composantes, et une clé à cinq composantes citée sous un tuple qui en compte six.)*
+
+#### M23 — §3.2, étiquette de l'invariant I9 (l.216)
+
+**Remplacer** l'étiquette *(débit)* **par** *(appliqué)*, par cohérence avec M3, M7 et M20.
+
+#### M24 — §4, permissivité par opération (l.858-859)
+
+**Remplacer** « La permissivité est par opération et non à l'échelle de la surface : un manifeste
+massivement budgété est refusé. » **par :**
+
+> La permissivité est par opération et non à l'échelle de la surface : un **ensemble de manifestes
+> desservant un même datastore** dont l'union est massivement budgétée est refusé, en proportion
+> comme en valeur absolue — le découpage du document n'y change rien.
+
+#### M25 — §3.10(6), volet exécution (l.797-798)
+
+**Remplacer** « Le risque est aujourd'hui **nul en pratique et armé par construction** : il se
+réalise à la première contribution externe, c'est-à-dire au moment où le projet réussit. » **par :**
+
+> Ce risque était décrit dans la révision initiale comme « nul en pratique et armé par
+> construction ». **L'instruction de §3.10(6) a établi que cette description était fausse** : au
+> 2026-08-15, le dépôt était `visibility: public` et `allow_forking: true`, la CI se déclenchait
+> sur `pull_request`, aucun de ses jobs ne portait la garde de fork exigée par ADR 018 Orion §3.1,
+> une PR de fork contrôlant en outre son propre `runs-on` et pouvant viser le pool statique
+> partagé ; `main` n'était par ailleurs ni protégée ni couverte par un ruleset. Le risque n'était
+> donc ni futur ni théorique. **Les deux défauts ont connu deux sorts distincts, et ils sont
+> nommés séparément.**
+>
+> *Garde de fork — corrigée.* La garde exigée par ADR 018 Orion §3.1 est posée sur l'ensemble des
+> jobs de la CI (PR #10) ; le veto correspondant est **levé par correction**.
+>
+> *Protection de `main` — non corrigée ; veto levé par acceptation de risque écrite.* La correction
+> est structurellement impossible pour le fleet — aucune App du dispositif ne détient
+> `Administration` au niveau dépôt — et le porteur, seul détenteur du droit, l'a refusée le
+> 2026-08-15. Le risque est inscrit au §5 sous **R23** et coté **moyen** : son exploitation suppose
+> un droit d'écriture déjà détenu, là où l'absence de garde de fork était atteignable depuis
+> Internet. L'acceptation est **conditionnée** au contrôle résiduel qu'énonce R23 — épinglage des
+> six consommateurs par SHA de commit en lockfile — et porte ses propres motifs de réexamen.
+>
+> §3.10(6) est en conséquence **instruite et rendue en totalité** : clearance sur le volet
+> exposition ; sur le volet exécution, deux vetos, l'un levé par correction, l'autre par
+> acceptation écrite **et conditionnée** (R23). La surface conserve deux travaux de suite, non un
+> veto : la **politique de divulgation** appelée par R22, et la vérification du contrôle résiduel
+> de R23 (#11, `QM-P0-07`).
+
+#### M26 — §3.4, section « État » (l.480-486)
+
+**Ajouter** en fin de section :
+
+> Le **puits d'attribution** d'I8 suit le même régime que l'état de comptage : colocalisé dans
+> PostgreSQL par défaut, écrit dans la transaction qui porte l'appel ; externe seulement si le
+> profil le déclare, sous la même clearance §3.10(10), avec la même conséquence sur la
+> disponibilité de la surface (R21).
+
+#### M27 — §3.10, surface (1) (l.773-774)
+
+**Remplacer** « modèle de signature et de révocation des attestations, autorisations et allocations
+— custody, rotation, et déterminisme ou non de la signature, dont dépend la portée exacte de
+RC-3 ; » **par :**
+
+> modèle de signature et de révocation des attestations, autorisations et allocations — custody et
+> rotation. **Surface instruite et rendue** (thread `bastion-adr-001-invariants`) : le schéma de
+> signature est déterministe et son encodage canonique spécifié (§3.3), l'ancre de confiance et le
+> régime de retrait par durée de vie bornée sont fixés (§3.2), et la portée de RC-3 n'est plus
+> suspendue à cette question — elle couvre désormais l'artefact signé entier. Ce qui demeure de la
+> surface est **opérationnel** et non doctrinal : custody des clés et exécution de la rotation
+> (R19, RC-46) ;
+
+*(Même motif que M25, et deuxième saisine de Vigil sur ce point : laisser une question tranchée
+présentée comme ouverte est la symétrique exacte de laisser une affirmation fausse debout. Un
+amendement dont le motif est l'exactitude ne peut pas s'en dispenser au seul endroit où c'est
+lui-même qui a tranché.)*
+
+#### M28 — §3.10, surface (4) (l.778-780)
+
+**Remplacer** « **solidité du jeu d'invariants lui-même** au regard de la revendication portée, y
+compris la validité de la partition ternaire du §3.2 et la légitimité de présenter I9 comme une
+garantie *appliquée* ; » **par :**
+
+> **solidité du jeu d'invariants lui-même** au regard de la revendication portée. **Surface
+> instruite et rendue** (thread `bastion-adr-001-invariants`) : le veto porté sur cette surface est
+> **levé par le présent amendement**, qui en corrige la cause. La partition ternaire du §3.2 est
+> rectifiée — régime **structurel** {I1 sous réserve, I2, I4, I5, I6}, **budgétaire** {I3, I7},
+> **appliqué** {I8, I9} (M1, M3, M7, M23) —, l'étiquetage se fait désormais par couple obligation /
+> dépassement (M4), et la revendication du §4 est alignée sur cette partition (M20). Présenter I9 —
+> et I8 avec lui — comme *appliqués* n'est plus une question ouverte mais le régime retenu, avec sa
+> conséquence assumée sur la disponibilité (R21). Ce qui demeure de la surface est **opérationnel**
+> et non doctrinal : matérialisation du noyau d'invariants et de son étiquetage (#9, `QM-P0-02`) et
+> traçabilité du verdict par son thread (#12, RC-26) ;
+
+*(Même motif que M25 et M27, et troisième saisine de Vigil sur ce point. §3.10(4) est la surface que
+le présent amendement traite le plus directement : la laisser présentée comme « à instruire » alors
+que ses trois questions — partition, statut d'I9, solidité du jeu — sont tranchées ici même serait
+la contradiction la plus visible du texte.)*
+
+### A3. Critères de résolution
+
+#### Critères modifiés
+
+- **RC-3** — étendu : la comparaison porte sur l'**artefact signé entier**, encodage canonique
+  compris, et non sur la seule charge utile. *Vérif :* comparaison binaire en CI, plus les vecteurs
+  de test de l'encodage canonique. Cette extension supprime le besoin d'un outil capable de
+  déballer l'enveloppe — nouvelle surface d'analyse là où le §3.8 en interdit partout ailleurs. Le
+  schéma de signature étant déterministe (M14), la réserve antérieure « le déterminisme de la
+  signature n'est pas présumé » est **levée** (M27).
+- **RC-4** — **sixième cas** : le répartiteur refuse de démarrer si l'attestation est valablement
+  formée mais **signée par une clé hors de l'ancre de confiance du profil**. *Vérif :* six tests,
+  un par cas, celui-ci mené avec une clé attaquante bien formée.
+- **RC-5** — étendu : une attestation de profil `dev` présentée à un runtime `prod` est rejetée **à
+  la vérification de signature, avant même la comparaison de profil**. *Vérif :* deux tests — l'un
+  prouvant le rejet cryptographique, l'autre prouvant que la comparaison de champ subsiste en
+  défense en profondeur.
+- **RC-19** — étendu : le gate refuse un ensemble de manifestes desservant le même datastore dont
+  l'union dépasse le plafond, en proportion **et** en valeur absolue, le dénominateur excluant les
+  opérations sans paramètre porteur de coût. *Vérif :* quatre tests de rejet — (a) dépassement en
+  proportion ; (b) dépassement en valeur absolue ; (c) **découpage** : deux manifestes désignant le
+  **même** identifiant de datastore, individuellement conformes, dont l'union ne l'est pas ;
+  (d) **identifiant hors ensemble clos** : un manifeste désignant un datastore absent de l'ensemble
+  déclaré au profil ne compile pas — c'est ce qui empêche l'évasion par invention d'identifiant.
+- **RC-26** — précisé : chaque verdict identifie **l'instance qui l'a rendu** — rôle **et** thread
+  —, et non le seul rôle. *Vérif :* les dix verdicts tracés portent chacun leur thread, et deux
+  verdicts rendus par deux instances d'un même rôle restent distinguables. *(Motif : trois surfaces
+  sont aujourd'hui instruites par deux instances Bastion distinctes —
+  `bastion-adr-001-invariants` pour (1) et (4), `bastion-audit-post-merge` pour (6). « Dix verdicts
+  tracés » ne disait pas par qui, ce qui rendait la traçabilité satisfaite en apparence.)*
+- **RC-40** — nouveau point **(e)** : le patch de sécurité `v0.2.3` de la ligne `0.x` borne
+  l'**appel unitaire** sans casser aucun consommateur qui déclare sa borne. Contenu normatif du
+  patch : `limit` devient un champ **requis** — `int`, et non `int | None` — borné à
+  `[0, MAX_LIMIT]` avec `MAX_LIMIT = 1000`. Deux verrous distincts, à ne pas confondre :
+  1. **Côté descripteur**, la validation Pydantic rejette l'absence de `limit` par une
+     `ValidationError` de code `missing`, et une valeur hors borne par une `ValidationError` de
+     code `less_than_equal` ou `greater_than_equal`. Ce sont les codes standard de Pydantic ;
+     aucun code applicatif n'y intervient.
+  2. **Côté compilateur**, la borne est **re-vérifiée avant émission SQL** et son dépassement lève
+     une `CompilationError` portant un `ValidationIssue` de code applicatif
+     `limit_out_of_bounds`. Ce second verrou est le dernier rempart contre un descripteur
+     construit en contournant la validation — `model_construct()` notamment.
+
+  Il n'existe aucun défaut silencieux, en aucun point : un appel qui ne déclare pas sa borne est
+  rejeté, jamais complété. Une troncature muette aurait été le pire mode d'échec possible sur un
+  patch poussé à six consommateurs vivants, l'appelant recevant un résultat partiel qu'il croit
+  complet.
+
+  **Portée, à ne jamais élargir en communication :** *B9 atténué en `v0.2.3` — l'appel unitaire est
+  borné ; l'extraction cumulée ne l'est pas, et ne le sera, pour un consommateur donné, qu'à son
+  **passage sur une surface attestée où I9 s'applique** — ce qui suppose la sortie de la ligne
+  `0.x` : P2 pour Blue, P5 pour les cinq autres. I9 (P1) en est la précondition, non l'échéance.*
+  Cette formulation est celle qui engage publiquement (RC-24) ; les trois échéances de R20 en sont
+  le détail opposable. La condition porte sur l'**arrivée** et non sur le départ : quitter `0.x`
+  vers un chemin non attesté satisferait une condition de sortie sans borner quoi que ce soit.
+
+  *Vérif :* (i) `v0.2.2` désigne le même objet git qu'avant (RC-40 (a)) ; (ii) le diff
+  `v0.2.2`→`v0.2.3` est limité à la borne d'extraction et à ses gardes ; (iii) **les suites de
+  tests des six consommateurs sont vertes sous `v0.2.3`**, après les modifications de code que
+  l'obligation de `limit` impose — preuve de non-régression démontrée par leurs tests, non
+  déclarée ; (iv) trois tests prouvent respectivement le rejet d'un `limit` absent, le rejet d'un
+  `limit` hors borne, et l'absence de toute troncature ; (v) un test prouve que la garde du
+  compilateur rejette une valeur hors borne construite en contournant la validation ; (vi)
+  l'inventaire des appels existants sans borne ou au-delà de `MAX_LIMIT` est produit, avec le
+  traitement retenu pour chacun.
+
+#### Critères nouveaux
+
+- **RC-12bis (I1)** — un manifeste joignant deux relations à discriminants de cloisonnement
+  hétérogènes non reliés par une relation de dérivation déclarée et cloisonnée est **rejeté**.
+  *Vérif :* test de rejet ; et, sur le corpus, aucune **opération de jointure** ne restitue une
+  ligne d'un tenant autre que celui de l'identité appelante. Ce cas figure parmi les dix
+  configurations vulnérables de RC-2.
+- **RC-33bis (I8)** — l'indisponibilité du puits d'attribution entraîne le refus des opérations.
+  *Vérif :* injection de faute sur le **chemin d'écriture du journal**, le reste du service restant
+  opérant — aucune opération n'est alors servie non attribuée. Même moyen de vérification que
+  RC-33, et pour le même motif : rendre la base injoignable rendrait le critère vide. Lorsqu'un
+  profil autorise un puits externe, le même critère s'exerce en rendant ce puits injoignable.
+- **RC-42** — la séparation de domaine est effective. *Vérif :* **six** tests de rejet croisé, une
+  paire ordonnée par couple de familles — un artefact d'une famille présenté à la vérification
+  d'une autre est rejeté sur l'étiquette de domaine, avant toute autre vérification de champ.
+- **RC-43** — aucun artefact n'est exploitable au-delà de la durée de vie maximale déclarée au
+  profil pour sa famille. *Vérif :* test d'expiration par famille ; et **absence de toute
+  bibliothèque ou de tout chemin de consultation de liste de révocation** dans l'arbre de
+  dépendances du répartiteur — même moyen que RC-7, et pour la même raison.
+- **RC-44** — le répartiteur **exige** la politique de signature portée par l'ancre du profil.
+  *Vérif :* une attestation `prod` mono-signée est rejetée par un runtime dont l'ancre déclare
+  n-parmi-m avec n > 1 ; et le rejet survient avant la vérification des hachages.
+- **RC-45** — lorsqu'un profil exige la limite en nombre d'appels, un manifeste qui l'omet ne
+  compile pas ; et une identité atteignant cette limite est refusée alors même que son quota de
+  coût reste intact. *Vérif :* test de rejet à la compilation ; scénario d'oracle mené jusqu'au
+  refus, quota de coût constaté non épuisé ; et **une allocation portant l'unité `coût` n'élargit
+  pas la limite en nombre d'appels** — test dédié, qui exerce la propagation de M21 et M22.
+- **RC-46** — la rotation de clé est exécutable sans perte de service. *Vérif :* runbook écrit et
+  **rejoué** avant l'ouverture de P1 sur une surface de référence — ré-attestation de flotte
+  produisant, par RC-29, un artefact identique octet pour octet ; fenêtre de recouvrement de
+  l'ancre prouvée par une vérification réussie sous l'ancienne et la nouvelle clé.
+
+### A4. Risques ajoutés au §5
+
+- **R19 — Coût de la rotation de clé.** La passe attestante unique (§3.8) fait de toute rotation
+  une recompilation et une ré-attestation de **toute la flotte**, qu'une rotation ratée transforme
+  en panne totale par RC-30. C'est précisément ce coût qui pousse une organisation à ne jamais
+  tourner une clé — le mode d'échec est l'immobilisme, pas l'accident. Atténuation : RC-29
+  (déterminisme au bit, qui rend la ré-attestation sûre), ancre multi-clés à fenêtre de
+  recouvrement, runbook écrit et rejoué avant P1 (RC-46).
+- **R20 — Extraction cumulée non bornée sur la ligne `0.x`.**
+  `src/queryme/descriptor.py:163` @ `17e78871d` : `limit: int | None = Field(default=None, ge=0)`
+  — borne basse seulement, et `None` faisait que `compiler.py:173-174` n'émettait **aucune** clause
+  `LIMIT`. Il ne s'agissait pas d'un plafond trop haut mais d'une absence totale de plafond, sur une
+  surface servant six services de production, pendant que le §3.3 présente ce plafond comme *la*
+  protection contre l'exfiltration.
+
+  **Décision du porteur, 2026-08-15 : correction, non acceptation de risque.** `v0.2.3` (PR #13,
+  squash `a08a0a4b`) rend `limit` requis et borné à `[0, 1000]`, sans déplacer `v0.2.2`
+  (RC-40 (a)) et sans porter aucun contenu de la nouvelle ligne.
+
+  **Le patch est une rupture de contrat, non un simple bump de version.** `limit` devenant requis,
+  tout consommateur qui construisait un `QueryDescriptor` sans le déclarer cesse de valider :
+  chaque migration exige une **modification de code réelle** chez le consommateur, et non un
+  déplacement d'épinglage. Le coût est nommé ici parce que le présenter comme un bump ferait
+  sous-estimer la durée pendant laquelle le risque reste courant — même discipline d'honnêteté que
+  la clause anti-survente du §3.2.
+
+  **La correction est partielle, et elle est nommée comme telle.** Elle borne l'**appel unitaire** ;
+  elle ne borne pas l'**extraction cumulée**. `offset` demeure non borné : extraire une relation
+  entière coûte désormais `ceil(lignes / 1000)` appels parfaitement nominaux, sans friction et sans
+  autorisation — c'est-à-dire exactement le chemin que le driver 10 et le §3.4 décrivent comme
+  principal.
+
+  Borner le cumul relève d'I9, donc de **P1** : hors du périmètre d'un patch de la ligne `0.x`. P1
+  est cependant une **précondition de fermeture, non la fermeture** — il livre I9 dans la nouvelle
+  ligne et ne modifie pas `queryme 0.x`, dont un consommateur épinglé garde `offset` non borné
+  après P1. Le résidu se ferme **par consommateur et par datastore**, lorsque celui-ci **arrive sur
+  une surface attestée où I9 s'applique** — ce qui suppose sa sortie de la ligne `0.x` : **P2**
+  pour Blue, **P5** pour les cinq autres (§3.9 P5 — « migration des six consommateurs hors de la
+  bibliothèque de validation par liste blanche, datastore par datastore »). La condition porte sur
+  l'arrivée et non sur le départ : quitter `0.x` vers un chemin non attesté ne borne rien.
+  L'exclusivité d'accès du §3.2 (b) et RC-41 en sont la conséquence, non le contenu.
+
+  **Trois échéances distinctes, aucune interchangeable :**
+  1. **Risque courant — appel unitaire non borné.** Cesse *par consommateur*, lorsque celui-ci a
+     migré vers `v0.2.3`, migration entendue comme la modification de code que l'obligation de
+     `limit` impose, et non comme le seul déplacement de l'épinglage.
+  2. **Risque résiduel — extraction cumulée par pagination répétée.** Cesse *par consommateur et
+     par datastore*, à son arrivée sur une surface attestée où I9 s'applique, donc à la sortie
+     complète de la ligne `0.x` : **P2** pour Blue, **P5** pour les cinq autres. P1 n'en est que la
+     précondition.
+  3. **Revendication du §3.2.** S'acquiert par datastore une fois (1) et (2) tenues (RC-41).
+
+  Tant que (2) n'est pas tenue pour un datastore donné, aucune communication publique ni aucun
+  critère ne présente B9 comme résolu pour celui-ci.
+- **R21 — Disponibilité du puits d'attribution.** Le fail-closed d'I8 (M7) transforme une panne du
+  puits d'attribution en indisponibilité de la surface, exactement comme R13 le fait pour l'état de
+  comptage — et il **double** cette surface de déni de service plutôt que de la partager. La
+  colocalisation par défaut dans PostgreSQL (M26) ramène le risque au niveau de R13 : le puits ne
+  tombe que si la base tombe. Un puits externe autorisé par un profil le réintroduit intégralement
+  et déplace une part de la disponibilité de la surface sur un second composant. La variante
+  fail-open est exclue : elle détruirait I8 en le rendant contournable par saturation du journal.
+- **R22 — Divulgation prématurée du défaut de borne `0.x`.** Le 2026-08-15, une PR sur le dépôt
+  public `ZabLaboratory/QueryMe` (commit `d2b5520`, PR #13) a publié une description du défaut de
+  borne d'extraction de la ligne `0.x` nommant les six services consommateurs, avant qu'aucun ne
+  soit migré. Le défaut lui-même était déjà lisible dans le code public depuis avril 2026 ; ce qui
+  a été ajouté est la liste des services affectés et la confirmation de l'exploitabilité. Le
+  contenu reste visible dans l'historique de la PR ; ni la réécriture d'historique ni une demande
+  de purge au support ne le retirent réellement, et aucun secret n'est en cause — **le risque est
+  donc accepté**. Sa contrepartie est temporelle : l'exposition dure tant que les consommateurs
+  restent sur `v0.2.2`. La migration des six services est ouverte comme unité datée, et son urgence
+  est fixée par une question préalable — une entrée non fiable atteint-elle la construction d'un
+  `QueryDescriptor` dans l'un d'eux. Atténuation permanente : `.gitignore` sur les fichiers de
+  protocole d'agent (PR #13) et politique de divulgation à définir en §3.10(6).
+- **R23 — `main` sans protection de branche ni ruleset.** Au 2026-08-15,
+  `ZabLaboratory/QueryMe` présente `main` en `protected: false` et `rulesets: []` (vérifié par API,
+  non supposé) : aucun check requis avant merge, aucune review requise, aucune application de
+  CODEOWNERS, aucune interdiction de force-push, aucune protection de tag. Bastion avait posé veto
+  sur cette surface et refusé d'en écrire l'acceptation ; le veto est levé ici par acceptation
+  explicite, sur deux fondements. D'une part la correction est **structurellement impossible pour
+  le fleet** : aucune App du dispositif ne détient le droit `Administration` au niveau dépôt,
+  seulement au niveau organisation, et Keeper a été bloqué à l'application. D'autre part le
+  porteur, seul détenteur du droit, a refusé explicitement le 2026-08-15 tant l'application
+  manuelle que l'extension de scope d'une App par la chaîne doctrine.
+
+  Bastion révise à cette occasion sa propre cotation, d'**élevée à moyenne**. La cotation initiale
+  rangeait ce risque aux côtés de l'absence de garde fork ; c'était une erreur d'analyse. L'absence
+  de garde fork était atteignable depuis Internet ; l'absence de protection de branche ne l'est
+  pas : son exploitation suppose de détenir **déjà** un droit d'écriture. Ce n'est pas un contrôle
+  de périmètre mais un contrôle d'intégrité et de rayon d'explosion — il ne repousse aucun
+  attaquant externe, il limite les conséquences d'une App compromise, d'un agent défaillant ou
+  d'une erreur humaine.
+
+  Ce qui est accepté, précisément : (a) un commit peut atteindre `main` sans qu'aucun des sept jobs
+  de CI n'ait eu à passer, ce qui rend purement déclaratoire la règle « pas de merge en CI rouge »
+  de `docs/rules/git.md` ; (b) `main` peut être force-pushée et son historique détruit ;
+  (c) l'absence de protection de tag rend les tags de version **mutables** — un tag `vX.Y.Z` réémis
+  modifierait le code servi à tout consommateur qui le résout dynamiquement.
+
+  Le contrôle résiduel qui rendrait cette acceptation pleinement tenable est l'épinglage effectif
+  de chacun des six consommateurs sur une révision verrouillée et opposable, et non sur une
+  référence flottante. **Cette vérification n'a pas été faite ici et elle conditionne
+  l'acceptation.** Elle n'est en particulier **pas** satisfaite par le constat que les six
+  résolvent aujourd'hui la même révision : le tag `v0.2.2` déréférence vers
+  `b80e5b29e2c5bfe6864c1cc5d98f752ed0af7154`, de sorte qu'un consommateur flottant sur le tag et un
+  consommateur verrouillé par SHA produisent une observation identique. Le fait ne discrimine pas
+  et ne vaut pas preuve.
+
+  Le critère discriminant s'établit pour chaque consommateur pris nommément : (i) la référence
+  déclarée dans son `pyproject.toml` ; (ii) la révision effectivement verrouillée dans son
+  `uv.lock` committé ; (iii) l'**opposabilité** de ce verrou — la CI du consommateur installe-t-elle
+  en mode verrouillé (`uv sync --frozen`, `uv lock --check`), de sorte qu'une régénération
+  silencieuse échoue au lieu de passer. Un verrou qui n'est pas opposable en CI n'est pas un
+  contrôle, c'est une convention.
+
+  Cette vérification est portée par l'issue **#11 (`QM-P0-07`)**, inventaire des six épinglages,
+  dont elle devient un critère de résolution explicite service par service selon les trois points
+  ci-dessus. Tant qu'elle n'est pas rendue, la présente acceptation demeure **conditionnelle** : le
+  tag `v0.2.2` reste mutable faute de protection de tag, et un seul consommateur flottant convertit
+  le point (c) du paragraphe précédent en chemin de compromission de la chaîne d'approvisionnement
+  de production. Une réponse négative de #11 sur un seul service, le passage d'un consommateur à
+  une référence flottante, ou toute réémission du tag `v0.2.2` périment cette acceptation sans
+  autre formalité et rouvrent le veto.
+
+  Réexamen obligatoire à la première occurrence de l'un de ces événements : premier contributeur ou
+  adoptant externe (RC-39, P4) ; attribution d'un droit d'écriture à une identité humaine ou
+  applicative supplémentaire ; obtention par une App du droit `Administration` au niveau dépôt, qui
+  reconvertit le risque en simple correction et périme l'acceptation.
+
+### A5. Ce que cet amendement ne tranche pas
+
+- **Trois** des dix surfaces de §3.10 sont instruites — (1) et (4) par
+  `bastion-adr-001-invariants`, (6) par `bastion-audit-post-merge` — et **sept** ne le sont pas :
+  (2), (3), (5), (7), (8), (9), (10). RC-26 en attend dix, chacun tracé avec son thread.
+- §3.10(1) est **rendue** au plan doctrinal (M27) ; ce qui en subsiste est opérationnel — custody
+  des clés et exécution de la rotation, portées par R19 et RC-46.
+- §3.10(4) est **rendue** au plan doctrinal (M28) : la partition ternaire est corrigée et le veto
+  levé par cet amendement ; ce qui en subsiste est opérationnel — matérialisation du noyau
+  d'invariants (#9, `QM-P0-02`) et traçabilité du verdict par thread (#12, RC-26).
+- §3.10(6) est **rendue en totalité** : clearance sur le volet exposition (historique complet,
+  quatorze commits sur toutes les refs, cinquante-six blobs, deux scanners, zéro finding) ; deux
+  vetos sur le volet exécution — garde de fork absente et `main` non protégée —, levés par des
+  voies **différentes** : le premier par correction (PR #10), le second par **acceptation de risque
+  écrite** (R23, M25), la correction étant hors de portée du fleet et refusée par le porteur.
+  Aucun veto ne reste ouvert. La surface conserve deux travaux de suite : la **politique de
+  divulgation** appelée par R22, et la vérification du contrôle résiduel dont R23 fait dépendre son
+  acceptation — pour chacun des six consommateurs, référence déclarée, révision verrouillée et
+  opposabilité du verrou en CI, portée par l'issue **#11** (`QM-P0-07`). Cette vérification n'est
+  pas faite ici ; R23 énonce ce qu'il advient si elle échoue.
+- Les risques résiduels non corrigeables relevés par l'instruction — publication, dans le message
+  de merge public `9d0541d`, du nom de l'orchestrateur de runners, de la règle de matching des
+  labels, de l'existence d'un pool statique partagé et du nom d'une autre structure étage 1 ; et
+  publication depuis `a96decb` du schéma réel de ZabTruth dans `tests/test_compiler.py:26-60` —
+  sont **actés comme résiduels** : réécrire l'historique d'un dépôt épinglé par six services coûte
+  plus qu'il ne rend.
+- L'urgence de migration des six consommateurs n'est pas fixée ici : R22 la pose comme unité datée
+  dont la priorité dépend d'une question préalable, et aucune formulation du présent amendement ne
+  suppose l'une ou l'autre réponse.
+
+### A6. Incidence sur les issues déjà ouvertes
+
+- **#8** (`QM-P0-01`, schéma du manifeste) — périmètre étendu : identifiant de datastore desservi,
+  **pris dans un ensemble clos déclaré au profil** (M8) ; déclaration optionnelle de limite en
+  nombre d'appels (M17) ; relation de dérivation entre discriminants de cloisonnement (M6).
+  Critères d'acceptation à compléter en conséquence.
+- **#9** (`QM-P0-02`, noyau d'invariants) — la partition change : structurel {I1 sous réserve, I2,
+  I4, I5, I6}, budgétaire {I3, I7}, appliqué {I8, I9} ; étiquetage par couple obligation /
+  dépassement (M4, M23) ; vérificateur de cohérence du discriminant le long des jointures
+  (RC-12bis).
+- **#11** (`QM-P0-07`, trajectoire de version) — périmètre étendu : `v0.2.3` est une publication sur
+  la ligne gelée, à distinguer explicitement de la nouvelle ligne ; RC-40 (e) s'ajoute à ses
+  critères. L'inventaire des six épinglages devient le support de suivi des trois échéances de R20
+  et de R22, et il porte pour chaque consommateur **la modification de code exigée par l'obligation
+  de `limit`** — la migration vers `v0.2.3` n'est pas un déplacement d'épinglage et ne doit pas
+  être suivie comme tel. Il porte désormais aussi le critère de résolution posé par **R23** : pour
+  chaque consommateur, référence déclarée, révision verrouillée, opposabilité du verrou en CI.
+- **#12** (`QM-P0-10`, gate §3.10) — surfaces (1) et (4) : **VETO levé** par cet amendement ;
+  surface (6) : **clearance sur l'exposition ; sur l'exécution, deux vetos, l'un levé par
+  correction (garde de fork, PR #10), l'autre par acceptation de risque écrite et conditionnée
+  (R23, `main` non protégée)** — aucun veto n'y reste ouvert ; en suite, la politique de divulgation
+  et la vérification du contrôle résiduel de R23 (#11). Les sept autres surfaces restent sans
+  verdict. Chaque ligne du tableau porte désormais le **thread** qui a rendu le verdict, et non le
+  seul rôle (RC-26).
+- **QM-P0-03** (formats) et **QM-P0-05** (évaluateur), non encore créées — corps à reprendre avant
+  création : ancre de confiance hors bande et son format, séparation de domaine, encodage canonique
+  à vecteurs de test, politique de signature n-parmi-m portée par l'ancre, durée de vie par
+  famille, composante `unité` du tuple d'allocation.
+- **QM-P0-04** (modèle de profil), non encore créée — corps à reprendre : ensemble clos des
+  identifiants de datastore, durées de vie maximales par famille d'artefact, exigibilité de la
+  limite en nombre d'appels, admissibilité d'un puits d'attribution externe.
+- **QM-P0-06** (corpus) — la configuration vulnérable « jointure à discriminants hétérogènes »
+  entre dans les dix (RC-12bis).
+- **QM-P0-08** (clause publique verbatim) — le texte à publier est celui issu de M9, M10 et M11 ;
+  sa rédaction était suspendue à ce verdict, elle est débloquée par cet amendement.
