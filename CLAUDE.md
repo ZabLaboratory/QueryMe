@@ -26,7 +26,7 @@ ZabAuth, ZabCam, ZabCanvas, Orion, Blue — read-only). It carries :
 QueryMe is a pure library — no FastAPI, no DB connection, no I/O.
 It is imported by services as a git-pinned dependency.
 
-Reference : `D:/Document/ZabLaboratory/docs/adr/001-blueprint-db-access.md`.
+Reference : `docs/adr/001-positionnement-et-architecture.md`.
 
 ## Stack
 
