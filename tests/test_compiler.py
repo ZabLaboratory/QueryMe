@@ -14,7 +14,13 @@ import pytest
 from sqlalchemy.dialects import postgresql
 
 from queryme.compiler import CompilationError, compile_query
-from queryme.descriptor import JoinClause, OrderClause, QueryDescriptor, WhereClause
+from queryme.descriptor import (
+    DEFAULT_MAX_LIMIT,
+    JoinClause,
+    OrderClause,
+    QueryDescriptor,
+    WhereClause,
+)
 from queryme.schema import ColumnDef, RelationDef, SchemaDescriptor, TableDef
 
 
@@ -88,7 +94,7 @@ def test_compile_simple_select() -> None:
     assert "WHERE" not in sql
     assert "JOIN" not in sql
     assert "ORDER BY" not in sql
-    assert "LIMIT" not in sql
+    assert "LIMIT" in sql
 
 
 def test_compile_where_equality_with_value() -> None:
@@ -267,11 +273,11 @@ def test_compile_limit_and_offset() -> None:
     assert "OFFSET 20" in sql
 
 
-def test_compile_omits_limit_offset_when_unset() -> None:
+def test_compile_applies_default_max_limit_when_unset() -> None:
     schema = _truth_schema()
     descriptor = QueryDescriptor(table="matches", select=["id"])
     sql = _sql(compile_query(descriptor, schema))
-    assert "LIMIT" not in sql
+    assert f"LIMIT {DEFAULT_MAX_LIMIT}" in sql
     assert "OFFSET" not in sql
 
 

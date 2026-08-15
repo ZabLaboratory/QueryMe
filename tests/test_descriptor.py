@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from queryme.descriptor import (
+    DEFAULT_MAX_LIMIT,
     JoinClause,
     OrderClause,
     QueryDescriptor,
@@ -99,3 +100,13 @@ def test_query_descriptor_rejects_unknown_field() -> None:
 def test_negative_limit_rejected() -> None:
     with pytest.raises(ValidationError):
         QueryDescriptor(table="matches", select=["id"], limit=-1)
+
+
+def test_limit_above_default_max_rejected() -> None:
+    with pytest.raises(ValidationError):
+        QueryDescriptor(table="matches", select=["id"], limit=DEFAULT_MAX_LIMIT + 1)
+
+
+def test_limit_at_default_max_accepted() -> None:
+    descriptor = QueryDescriptor(table="matches", select=["id"], limit=DEFAULT_MAX_LIMIT)
+    assert descriptor.limit == DEFAULT_MAX_LIMIT

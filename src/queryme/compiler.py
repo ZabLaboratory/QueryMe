@@ -37,7 +37,7 @@ from sqlalchemy import (
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.types import TypeEngine
 
-from queryme.descriptor import Operator, QueryDescriptor
+from queryme.descriptor import DEFAULT_MAX_LIMIT, Operator, QueryDescriptor
 from queryme.schema import ColumnType, SchemaDescriptor, TableDef
 from queryme.validator import ValidationIssue, validate_against_schema
 
@@ -169,9 +169,13 @@ def compile_query(
         col = _resolve_column(o.column, tables)
         stmt = stmt.order_by(asc(col) if o.direction == "asc" else desc(col))
 
-    # LIMIT / OFFSET — emitted only when explicitly set.
-    if descriptor.limit is not None:
-        stmt = stmt.limit(descriptor.limit)
+    # LIMIT — always emitted. An explicit descriptor.limit is already
+    # bounded by DEFAULT_MAX_LIMIT (descriptor validation) ; an omitted
+    # one falls back to the same ceiling so a query can never run
+    # unbounded against a service's database.
+    stmt = stmt.limit(
+        descriptor.limit if descriptor.limit is not None else DEFAULT_MAX_LIMIT
+    )
     if descriptor.offset is not None:
         stmt = stmt.offset(descriptor.offset)
 
