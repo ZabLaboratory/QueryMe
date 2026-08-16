@@ -63,7 +63,12 @@ jobs:
       - name: Sync dev dependencies
         run: uv sync --frozen
       - name: Run pytest
-        run: uv run pytest --color=yes
+        # -v names every collected test in the log with its outcome
+        # (PASSED/FAILED/SKIPPED). Plain `pytest --color=yes` only prints a
+        # dot per file: a test that runs and a test that is present but
+        # never collected are indiscernible in that output (ADR 013 §1.3.2,
+        # RC5) — -v is the minimum needed to tell them apart.
+        run: uv run pytest --color=yes -v
 
   deps-audit:
     name: Dependency audit (pip-audit)

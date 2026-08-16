@@ -1,0 +1,7 @@
+# Normalize line endings: LF in the repo, regardless of OS checkout.
+# A Windows clone with core.autocrlf=true would otherwise silently
+# recode the golden fixtures to CRLF, breaking the byte-identical
+# digest this repo's contract tests pin against (ADR 013 §6 RC5,
+# tests/fixtures/querydescriptor_golden.json.sha256).
+
+* text=auto eol=lf
