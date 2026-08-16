@@ -12,8 +12,13 @@ point the other two representations are pinned against:
    (``Orion/internal/runtime/compute_db_test.go::TestQueryDescriptor_GoldenParity``)
    — pinned against its own byte-identical copy.
 
-A field rename or reorder on any side breaks its own arm loudly, so the
-three representations can never silently drift apart.
+A field rename on any side breaks its own arm loudly, so the three
+representations can never silently drift apart on the fields they carry.
+Key order is not part of that guarantee: this arm compares parsed dicts,
+never raw text, so a reordered-but-equal golden re-hashed into a fresh
+sidecar would still pass — the contract this test pins is field names and
+values, not on-disk byte order of an object's keys (only the golden
+file's own bytes are pinned byte-for-byte, by the sidecar check above).
 
 QueryMe does not consume the ``blue-runtime-go`` module (``pyproject.toml``
 has no path into it — Python cannot import a Go artefact), so this arm has
